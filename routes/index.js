@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const productRoutes = require("./productRoutes");
+router.use("/productos", productRoutes);
+module.exports = router;
 
 // Importar rutas específicas
 const userRoutes = require("./userRoutes");
