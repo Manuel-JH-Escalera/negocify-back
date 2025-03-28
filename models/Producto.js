@@ -28,6 +28,14 @@ const Producto = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    almacen_id: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: "almacen",
+        key: "id",
+      },
+    },
   },
   {
     timestamps: false,
@@ -35,6 +43,9 @@ const Producto = sequelize.define(
   }
 );
 
-Producto.belongsTo(TipoProducto, { foreignKey: "tipo_producto_id", as: "tipoProducto" });
+Producto.belongsTo(TipoProducto, {
+  foreignKey: "tipo_producto_id",
+  as: "tipoProducto",
+});
 
 module.exports = Producto;
