@@ -1,83 +1,62 @@
-const { DataTypes } = require("sequelize");
-const { sequelize } = require("../config/database");
-const Usuario = require("./Usuario");
-const Rol = require("./Rol");
-const Almacen = require("./Almacen");
+const { DataTypes, Model } = require("sequelize");
 
-const UsuarioRolAlmacen = sequelize.define(
-  "usuario_rol_almacen",
-  {
-    id: {
-      type: DataTypes.BIGINT,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    usuario_id: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-      references: {
-        model: Usuario,
-        key: "id",
-      },
-    },
-    almacen_id: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-      references: {
-        model: Almacen,
-        key: "id",
-      },
-    },
-    rol_id: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-      references: {
-        model: Rol,
-        key: "id",
-      },
-    },
-  },
-  {
-    timestamps: false,
-    tableName: "usuario_rol_almacen",
+module.exports = (sequelize, DataTypes) => {
+  class UsuarioRolAlmacen extends Model {
+    static associate(models) {
+      this.belongsTo(models.Usuario, {
+        foreignKey: "usuario_id",
+        as: "Usuario",
+      });
+      this.belongsTo(models.Almacen, {
+        foreignKey: "almacen_id",
+        as: "Almacen",
+      });
+      this.belongsTo(models.Rol, {
+        foreignKey: "rol_id",
+        as: "Rol",
+      });
+    }
   }
-);
 
-// Definir relaciones
-Usuario.belongsToMany(Almacen, {
-  through: UsuarioRolAlmacen,
-  foreignKey: "usuario_id",
-  otherKey: "almacen_id",
-});
+  UsuarioRolAlmacen.init(
+    {
+      id: {
+        type: DataTypes.BIGINT,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      usuario_id: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        references: {
+          model: "usuario",
+          key: "id",
+        },
+      },
+      almacen_id: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        references: {
+          model: "almacen",
+          key: "id",
+        },
+      },
+      rol_id: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        references: {
+          model: "rol",
+          key: "id",
+        },
+      },
+    },
+    {
+      sequelize,
+      modelName: "UsuarioRolAlmacen",
+      tableName: "usuario_rol_almacen",
+      timestamps: false,
+    }
+  );
 
-Almacen.belongsToMany(Usuario, {
-  through: UsuarioRolAlmacen,
-  foreignKey: "almacen_id",
-  otherKey: "usuario_id",
-});
-
-Usuario.belongsToMany(Rol, {
-  through: UsuarioRolAlmacen,
-  foreignKey: "usuario_id",
-  otherKey: "rol_id",
-});
-
-Rol.belongsToMany(Usuario, {
-  through: UsuarioRolAlmacen,
-  foreignKey: "rol_id",
-  otherKey: "usuario_id",
-});
-
-Almacen.belongsToMany(Rol, {
-  through: UsuarioRolAlmacen,
-  foreignKey: "almacen_id",
-  otherKey: "rol_id",
-});
-
-Rol.belongsToMany(Almacen, {
-  through: UsuarioRolAlmacen,
-  foreignKey: "rol_id",
-  otherKey: "almacen_id",
-});
-
-module.exports = UsuarioRolAlmacen;
+  return UsuarioRolAlmacen;
+};

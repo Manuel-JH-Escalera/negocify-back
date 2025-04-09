@@ -1,51 +1,65 @@
-const { DataTypes } = require("sequelize");
-const { sequelize } = require("../config/database");
+// models/Producto.js
+const { DataTypes, Model } = require("sequelize");
 
-// Si decides crear el archivo tipoProducto.js, importa aquí
-const TipoProducto = require("./TipoProducto");
+module.exports = (sequelize) => {
+  class Producto extends Model {
+    static associate(models) {
+      this.belongsTo(models.TipoProducto, {
+        foreignKey: "tipo_producto_id",
+        as: "tipoProducto",
+      });
+      this.belongsTo(models.Almacen, {
+        foreignKey: "almacen_id",
+        as: "almacen",
+      });
+    }
+  }
 
-const Producto = sequelize.define(
-  "producto",
-  {
-    id: {
-      type: DataTypes.BIGINT,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    nombre: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    tipo_producto_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    stock: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    stock_minimo: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    almacen_id: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-      references: {
-        model: "almacen",
-        key: "id",
+  Producto.init(
+    {
+      id: {
+        type: DataTypes.BIGINT,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      nombre: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      tipo_producto_id: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        references: {
+          model: "tipo_producto",
+          key: "id",
+        },
+      },
+      stock: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false,
+      },
+      stock_minimo: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false,
+      },
+      almacen_id: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        references: {
+          model: "almacen",
+          key: "id",
+        },
       },
     },
-  },
-  {
-    timestamps: false,
-    tableName: "producto",
-  }
-);
+    {
+      sequelize,
+      modelName: "Producto",
+      tableName: "producto",
+      timestamps: false,
+    }
+  );
 
-Producto.belongsTo(TipoProducto, {
-  foreignKey: "tipo_producto_id",
-  as: "tipoProducto",
-});
-
-module.exports = Producto;
+  return Producto;
+};

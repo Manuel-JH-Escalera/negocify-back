@@ -1,23 +1,34 @@
-const { DataTypes } = require("sequelize");
-const { sequelize } = require("../config/database");
+const { DataTypes, Model } = require("sequelize");
 
-const TipoProducto = sequelize.define(
-  "tipoProducto",
-  {
-    id: {
-      type: DataTypes.BIGINT,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    nombre: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    timestamps: false,
-    tableName: "tipo_producto",
+module.exports = (sequelize) => {
+  class TipoProducto extends Model {
+    static associate(models) {
+      this.hasMany(models.Producto, {
+        foreignKey: "tipo_producto_id",
+        as: "productos",
+      });
+    }
   }
-);
 
-module.exports = TipoProducto;
+  TipoProducto.init(
+    {
+      id: {
+        type: DataTypes.BIGINT,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      nombre: {
+        type: DataTypes.STRING(100),
+        allowNull: false,
+      },
+    },
+    {
+      sequelize,
+      modelName: "TipoProducto",
+      tableName: "tipo_producto",
+      timestamps: false,
+    }
+  );
+
+  return TipoProducto;
+};

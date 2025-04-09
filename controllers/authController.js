@@ -1,18 +1,11 @@
 const jwt = require("jsonwebtoken");
 const { Usuario } = require("../models");
+const { getUserPermissions } = require("../utils/permissionHelper");
 
-// Generar un JWT
 const generateToken = (usuario) => {
-  return jwt.sign(
-    {
-      id: usuario.id,
-      email: usuario.email,
-      nombre: usuario.nombre,
-      apellido: usuario.apellido,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
-  );
+  return jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
 };
 
 // Registro de un nuevo usuario
@@ -66,19 +59,15 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Buscar el usuario por email
     const usuario = await Usuario.findOne({ where: { email } });
 
-    // Verificar si el usuario existe
     if (!usuario) {
-      return res.status(404).json({
+      return res.status(401).json({
         success: false,
         message: "Credenciales inválidas",
       });
     }
 
-    // Verificar contraseña
     const isPasswordValid = await usuario.comparePassword(password);
 
     if (!isPasswordValid) {
@@ -88,10 +77,8 @@ const login = async (req, res) => {
       });
     }
 
-    // Generar token
     const token = generateToken(usuario);
-
-    // Responder sin incluir la contraseña
+    const permisos = await getUserPermissions(usuario.id);
     const { password: _, ...usuarioSinPassword } = usuario.toJSON();
 
     res.status(200).json({
@@ -100,6 +87,7 @@ const login = async (req, res) => {
       data: {
         usuario: usuarioSinPassword,
         token,
+        permisos: permisos,
       },
     });
   } catch (error) {
@@ -114,30 +102,16 @@ const login = async (req, res) => {
 
 // Obtener información del usuario actual
 const getMe = async (req, res) => {
-  try {
-    const usuario = await Usuario.findByPk(req.user.id, {
-      attributes: { exclude: ["password"] },
-    });
-
-    if (!usuario) {
-      return res.status(404).json({
-        success: false,
-        message: "Usuario no encontrado",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: usuario,
-    });
-  } catch (error) {
-    console.error("Error al obtener perfil:", error);
-    res.status(500).json({
+  if (!req.user) {
+    return res.status(401).json({
       success: false,
-      message: "Error al obtener información del usuario",
-      error: error.message,
+      message: "Usuario no autenticado o información no disponible.",
     });
   }
+  res.status(200).json({
+    success: true,
+    data: req.user,
+  });
 };
 
 module.exports = {
