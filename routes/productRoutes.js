@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const { Producto, TipoProducto } = require("../models");
+const {
+  checkUserPermissionForWarehouse,
+} = require("../utils/permissionChecker");
+const { protect } = require("../middlewares/authMiddleware");
 
 // Obtener todas las categorías (TipoProducto)
 router.get("/tipo_producto", async (req, res) => {
@@ -14,17 +18,46 @@ router.get("/tipo_producto", async (req, res) => {
 });
 
 // grab los productos
-router.get("/", async (req, res) => {
+router.get("/", protect, async (req, res) => {
   try {
+    const requestedAlmacenId = req.query.almacen_id;
+
+    if (!requestedAlmacenId) {
+      return res.status(400).json({
+        success: false,
+        message: "El parámetro 'almacen_id' es requerido.",
+      });
+    }
+
+    const rolesPermitidos = ["administrador", "empleado"];
+
+    const tienePermiso = checkUserPermissionForWarehouse(
+      req.user,
+      rolesPermitidos,
+      requestedAlmacenId
+    );
+
+    if (!tienePermiso) {
+      return res.status(403).json({
+        success: false,
+        message: "Acceso denegado a los productos de este almacén.",
+      });
+    }
+
     const productos = await Producto.findAll({
+      where: {
+        almacen_id: requestedAlmacenId, // Filtrar por el almacén verificado
+      },
       include: [
         { model: TipoProducto, as: "tipoProducto", attributes: ["nombre"] },
       ],
+      order: [["nombre", "ASC"]],
     });
+
     res.json(productos);
   } catch (error) {
     console.error("Error al traer los productos:", error);
-    res.status(500).json({ message: "Error al traer los productos" });
+    res.status(500).json({ message: "Error interno al traer los productos" });
   }
 });
 

@@ -1,16 +1,15 @@
 const express = require("express");
 const router = express.Router();
-const productRoutes = require("./productRoutes");
-router.use("/productos", productRoutes);
-module.exports = router;
 
 // Importar rutas específicas
 const userRoutes = require("./userRoutes");
 const authRoutes = require("./authRoutes");
+const productRoutes = require("./productRoutes");
 
 // Definir rutas principales
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
+router.use("/productos", productRoutes);
 
 // Ruta de verificación de API
 router.get("/status", (req, res) => {
