@@ -62,10 +62,31 @@ router.get("/", protect, async (req, res) => {
 });
 
 // crear producto nuevo
-router.post("/", async (req, res) => {
+router.post("/", protect, async (req, res) => {
   try {
     const { nombre, tipo_producto_id, stock, stock_minimo, almacen_id } =
       req.body;
+
+      if (!nombre || !tipo_producto_id || !stock || !stock_minimo || !almacen_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Todos los campos son obligatorios.",
+        });
+      }
+
+      const rolesPermitidos = ["administrador", "empleado"];
+      const tienePermiso = checkUserPermissionForWarehouse(
+        req.user,
+        rolesPermitidos,
+        almacen_id
+      );
+
+      if (!tienePermiso) {
+        return res.status(403).json({
+          success: false,
+          message: "Acceso denegado a este almacén.",
+        });
+      }
 
     const nuevoProducto = await Producto.create({
       nombre,
@@ -82,39 +103,78 @@ router.post("/", async (req, res) => {
 });
 
 // editar producto
-router.put("/:id", async (req, res) => {
+router.put("/:id", protect, async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, tipo_producto_id, stock, stock_minimo } = req.body; // Eliminamos almacen_id
 
+    // validar input
+    if (!nombre || !tipo_producto_id || !stock || !stock_minimo) {
+      return res.status(400).json({
+        success: false,
+        message: "Todos los campos son obligatorios.",
+      });
+    }
+
+    // ver si el producto existe
     const producto = await Producto.findByPk(id);
     if (!producto) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
+    // verificar permisos
+    const rolesPermitidos = ["administrador", "empleado"];
+    const tienePermiso = checkUserPermissionForWarehouse(req.user, rolesPermitidos, producto.almacen_id);
+    if (!tienePermiso) {
+      return res.status(403).json({
+        success: false,
+        message: "Acceso denegado para editar productos de este almacén.",
+      });
+    }
+
+    // actualizar producto
     await producto.update({ nombre, tipo_producto_id, stock, stock_minimo }); // Aseguramos que stock_minimo se actualice
     res.json(producto);
   } catch (error) {
-    console.error("Error updating product:", error);
-    res.status(500).json({ message: "Error updating product" });
+    console.error("Error actualizando producto", error);
+    res.status(500).json({ message: "Error actualizando producto" });
   }
 });
 
 // eliminar producto
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", protect, async (req, res) => {
   try {
     const { id } = req.params;
+
+    // ver si el producto existe
     const producto = await Producto.findByPk(id);
 
     if (!producto) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
+    // verificar permisos
+    const almacenId = producto.almacen_id; // Obtener el ID del almacén del producto
+    const rolesPermitidos = ["administrador", "empleado"];
+    const tienePermiso = checkUserPermissionForWarehouse(
+      req.user,
+      rolesPermitidos,
+      almacenId
+    );
+
+    if (!tienePermiso) {
+      return res.status(403).json({
+        success: false,
+        message: "Acceso denegado para eliminar productos de este almacén.",
+      });
+    }
+
+    // eliminar producto
     await producto.destroy();
     res.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
-    console.error("Error deleting product:", error);
-    res.status(500).json({ message: "Error deleting product" });
+    console.error("Error al eliminar el producto:", error);
+    res.status(500).json({ message: "Error al eliminar el producto" });
   }
 });
 module.exports = router;
