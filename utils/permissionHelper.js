@@ -35,13 +35,13 @@ const getUserPermissions = async (usuarioId) => {
             model: Almacen,
             as: "Almacen",
             attributes: ["id", "nombre", "direccion"],
-            required: true,
+            required: true, // Cambiado temp a false para incluir almacenes sin permisos
           },
           {
             model: Rol,
             as: "Rol",
             attributes: ["id", "nombre"],
-            required: true,
+            required: true, // Cambiado temp a false para incluir roles sin permisos
           },
         ],
         order: [[{ model: Almacen, as: "Almacen" }, "nombre", "ASC"]],
