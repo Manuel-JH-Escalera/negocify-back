@@ -66,7 +66,7 @@ router.post("/", protect, async (req, res) => {
   try {
     const { nombre, tipo_producto_id, stock, stock_minimo, almacen_id } =
       req.body;
-
+    console.log("parametros que llegan al servidor",{ nombre, tipo_producto_id, stock, stock_minimo, almacen_id })
       if (!nombre || !tipo_producto_id || !stock || !stock_minimo || !almacen_id) {
         return res.status(400).json({
           success: false,
