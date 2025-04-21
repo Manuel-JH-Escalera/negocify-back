@@ -7,7 +7,6 @@ const {
 const { protect } = require("../middlewares/authMiddleware");
 const { Op, col } = require("sequelize");
 
-
 // Obtener todas las categorías (TipoProducto)
 router.get("/tipo_producto", async (req, res) => {
   try {
@@ -18,7 +17,6 @@ router.get("/tipo_producto", async (req, res) => {
     res.status(500).json({ message: "Error fetching categories" });
   }
 });
-
 
 // Obtener productos con bajo stock
 router.get("/bajo-stock", protect, async (req, res) => {
@@ -51,14 +49,21 @@ router.get("/bajo-stock", protect, async (req, res) => {
     res.json(productos);
   } catch (err) {
     console.error("Error bajo-stock", err);
-    res.status(500).json({ message: "Error al obtener productos con bajo stock" });
+    res
+      .status(500)
+      .json({ message: "Error al obtener productos con bajo stock" });
   }
 });
 
 // grab los productos
 router.get("/", protect, async (req, res) => {
   try {
-    const requestedAlmacenId = req.query.almacen_id;
+    const {
+      almacen_id: requestedAlmacenId,
+      tipo_producto_id,
+      search_name,
+      search_sku,
+    } = req.query;
 
     if (!requestedAlmacenId) {
       return res.status(400).json({
@@ -82,10 +87,28 @@ router.get("/", protect, async (req, res) => {
       });
     }
 
+    const whereClause = {
+      almacen_id: requestedAlmacenId,
+    };
+
+    if (tipo_producto_id) {
+      whereClause.tipo_producto_id = tipo_producto_id;
+    }
+
+    if (search_name) {
+      whereClause.nombre = {
+        [Op.iLike]: `%${search_name}%`,
+      };
+    }
+
+    if (search_sku) {
+      whereClause.sku = {
+        [Op.iLike]: `%${search_sku}%`,
+      };
+    }
+
     const productos = await Producto.findAll({
-      where: {
-        almacen_id: requestedAlmacenId, // Filtrar por el almacén verificado
-      },
+      where: whereClause,
       include: [
         { model: TipoProducto, as: "tipoProducto", attributes: ["nombre"] },
       ],
@@ -104,27 +127,39 @@ router.post("/", protect, async (req, res) => {
   try {
     const { nombre, tipo_producto_id, stock, stock_minimo, almacen_id } =
       req.body;
-    console.log("parametros que llegan al servidor",{ nombre, tipo_producto_id, stock, stock_minimo, almacen_id })
-      if (!nombre || !tipo_producto_id || !stock || !stock_minimo || !almacen_id) {
-        return res.status(400).json({
-          success: false,
-          message: "Todos los campos son obligatorios.",
-        });
-      }
+    console.log("parametros que llegan al servidor", {
+      nombre,
+      tipo_producto_id,
+      stock,
+      stock_minimo,
+      almacen_id,
+    });
+    if (
+      !nombre ||
+      !tipo_producto_id ||
+      !stock ||
+      !stock_minimo ||
+      !almacen_id
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Todos los campos son obligatorios.",
+      });
+    }
 
-      const rolesPermitidos = ["administrador", "empleado"];
-      const tienePermiso = checkUserPermissionForWarehouse(
-        req.user,
-        rolesPermitidos,
-        almacen_id
-      );
+    const rolesPermitidos = ["administrador", "empleado"];
+    const tienePermiso = checkUserPermissionForWarehouse(
+      req.user,
+      rolesPermitidos,
+      almacen_id
+    );
 
-      if (!tienePermiso) {
-        return res.status(403).json({
-          success: false,
-          message: "Acceso denegado a este almacén.",
-        });
-      }
+    if (!tienePermiso) {
+      return res.status(403).json({
+        success: false,
+        message: "Acceso denegado a este almacén.",
+      });
+    }
 
     const nuevoProducto = await Producto.create({
       nombre,
@@ -162,7 +197,11 @@ router.put("/:id", protect, async (req, res) => {
 
     // verificar permisos
     const rolesPermitidos = ["administrador", "empleado"];
-    const tienePermiso = checkUserPermissionForWarehouse(req.user, rolesPermitidos, producto.almacen_id);
+    const tienePermiso = checkUserPermissionForWarehouse(
+      req.user,
+      rolesPermitidos,
+      producto.almacen_id
+    );
     if (!tienePermiso) {
       return res.status(403).json({
         success: false,
@@ -214,7 +253,5 @@ router.delete("/:id", protect, async (req, res) => {
     console.error("Error al eliminar el producto:", error);
     res.status(500).json({ message: "Error al eliminar el producto" });
   }
-
-    
 });
 module.exports = router;

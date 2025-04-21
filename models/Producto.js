@@ -52,6 +52,19 @@ module.exports = (sequelize) => {
           key: "id",
         },
       },
+      sku: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: true,
+      },
+      valor: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        validate: {
+          min: 0,
+        },
+      },
     },
     {
       sequelize,
