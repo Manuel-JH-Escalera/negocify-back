@@ -29,7 +29,7 @@ module.exports = (sequelize) => {
             monto_neto: {
                 type: DataTypes.INTEGER,
                 defaultValue: 0,
-                allowNull: false,
+                allowNull: true,
             },
             fecha: {
                 type: DataTypes.DATE,
