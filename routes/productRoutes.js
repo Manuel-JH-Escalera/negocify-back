@@ -5,6 +5,8 @@ const {
   checkUserPermissionForWarehouse,
 } = require("../utils/permissionChecker");
 const { protect } = require("../middlewares/authMiddleware");
+const { Op, col } = require("sequelize");
+
 
 // Obtener todas las categorías (TipoProducto)
 router.get("/tipo_producto", async (req, res) => {
@@ -14,6 +16,42 @@ router.get("/tipo_producto", async (req, res) => {
   } catch (error) {
     console.error("Error fetching categories:", error);
     res.status(500).json({ message: "Error fetching categories" });
+  }
+});
+
+
+// Obtener productos con bajo stock
+router.get("/bajo-stock", protect, async (req, res) => {
+  try {
+    const requestedAlmacenId = req.query.almacen_id;
+
+    if (!requestedAlmacenId) {
+      return res.status(400).json({ message: "almacen_id es requerido" });
+    }
+
+    const tienePermiso = checkUserPermissionForWarehouse(
+      req.user,
+      ["administrador", "empleado"],
+      requestedAlmacenId
+    );
+
+    if (!tienePermiso) {
+      return res.status(403).json({ message: "Sin permiso" });
+    }
+
+    const productos = await Producto.findAll({
+      where: {
+        almacen_id: requestedAlmacenId,
+        stock: {
+          [Op.lt]: col("stock_minimo"),
+        },
+      },
+    });
+
+    res.json(productos);
+  } catch (err) {
+    console.error("Error bajo-stock", err);
+    res.status(500).json({ message: "Error al obtener productos con bajo stock" });
   }
 });
 
@@ -66,7 +104,7 @@ router.post("/", protect, async (req, res) => {
   try {
     const { nombre, tipo_producto_id, stock, stock_minimo, almacen_id } =
       req.body;
-
+    console.log("parametros que llegan al servidor",{ nombre, tipo_producto_id, stock, stock_minimo, almacen_id })
       if (!nombre || !tipo_producto_id || !stock || !stock_minimo || !almacen_id) {
         return res.status(400).json({
           success: false,
@@ -176,5 +214,7 @@ router.delete("/:id", protect, async (req, res) => {
     console.error("Error al eliminar el producto:", error);
     res.status(500).json({ message: "Error al eliminar el producto" });
   }
+
+    
 });
 module.exports = router;
