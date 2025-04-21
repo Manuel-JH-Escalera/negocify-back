@@ -5,11 +5,15 @@ const router = express.Router();
 const userRoutes = require("./userRoutes");
 const authRoutes = require("./authRoutes");
 const productRoutes = require("./productRoutes");
+const tipoVentaRoutes = require("./tipoVentaRoutes");
+const ventaRoutes = require("./ventaRoutes");
 
 // Definir rutas principales
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/productos", productRoutes);
+router.use("/tipos-venta", tipoVentaRoutes);
+router.use("/ventas", ventaRoutes);
 
 // Ruta de verificación de API
 router.get("/status", (req, res) => {
