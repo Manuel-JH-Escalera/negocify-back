@@ -125,21 +125,32 @@ router.get("/", protect, async (req, res) => {
 // crear producto nuevo
 router.post("/", protect, async (req, res) => {
   try {
-    const { nombre, tipo_producto_id, stock, stock_minimo, almacen_id } =
-      req.body;
+    const {
+      nombre,
+      tipo_producto_id,
+      stock,
+      stock_minimo,
+      almacen_id,
+      sku,
+      valor,
+    } = req.body;
     console.log("parametros que llegan al servidor", {
       nombre,
       tipo_producto_id,
       stock,
       stock_minimo,
       almacen_id,
+      sku,
+      valor,
     });
     if (
       !nombre ||
       !tipo_producto_id ||
       !stock ||
       !stock_minimo ||
-      !almacen_id
+      !almacen_id ||
+      !sku ||
+      !valor
     ) {
       return res.status(400).json({
         success: false,
@@ -167,6 +178,8 @@ router.post("/", protect, async (req, res) => {
       stock,
       stock_minimo,
       almacen_id,
+      sku,
+      valor,
     });
     res.status(201).json(nuevoProducto);
   } catch (error) {
@@ -179,7 +192,8 @@ router.post("/", protect, async (req, res) => {
 router.put("/:id", protect, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, tipo_producto_id, stock, stock_minimo } = req.body; // Eliminamos almacen_id
+    const { nombre, tipo_producto_id, stock, stock_minimo, sku, valor } =
+      req.body;
 
     // validar input
     if (!nombre || !tipo_producto_id || !stock || !stock_minimo) {
@@ -210,7 +224,14 @@ router.put("/:id", protect, async (req, res) => {
     }
 
     // actualizar producto
-    await producto.update({ nombre, tipo_producto_id, stock, stock_minimo }); // Aseguramos que stock_minimo se actualice
+    await producto.update({
+      nombre,
+      tipo_producto_id,
+      stock,
+      stock_minimo,
+      sku,
+      valor,
+    });
     res.json(producto);
   } catch (error) {
     console.error("Error actualizando producto", error);
@@ -231,7 +252,7 @@ router.delete("/:id", protect, async (req, res) => {
     }
 
     // verificar permisos
-    const almacenId = producto.almacen_id; // Obtener el ID del almacén del producto
+    const almacenId = producto.almacen_id; // obtener el ID del almacén del producto
     const rolesPermitidos = ["administrador", "empleado"];
     const tienePermiso = checkUserPermissionForWarehouse(
       req.user,
