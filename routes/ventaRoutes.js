@@ -618,6 +618,8 @@ router.get("/reporte/:almacenId", protect, async (req, res) => {
     const { almacenId } = req.params;
     const { fechaInicio, fechaFin } = req.query;
 
+    console.log("Parámetros recibidos:", { almacenId, fechaInicio, fechaFin });
+
     if (!almacenId) {
       return res.status(400).json({ message: "ID de almacén requerido" });
     }
@@ -653,27 +655,37 @@ router.get("/reporte/:almacenId", protect, async (req, res) => {
       order: [["fecha", "DESC"]],
     });
 
+    console.log(`Se encontraron ${ventas.length} ventas para el almacén ${almacenId}`);
+
     // Filtrar manualmente por fecha (si se proporcionan)
     let ventasFiltradas = ventas;
 
     if (fechaInicio || fechaFin) {
+      console.log(`Aplicando filtro de fechas: ${fechaInicio} hasta ${fechaFin}`);
+
       ventasFiltradas = ventas.filter((venta) => {
         if (!venta.fecha) return false;
         const fechaVenta = new Date(venta.fecha);
 
-        if (fechaInicio && fechaFin) {
-          return (
-            fechaVenta >= new Date(fechaInicio) &&
-            fechaVenta <= new Date(fechaFin)
-          );
-        } else if (fechaInicio) {
-          return fechaVenta >= new Date(fechaInicio);
-        } else if (fechaFin) {
-          return fechaVenta <= new Date(fechaFin);
+        //depuración
+        const esIncluida = (() => {
+          if (fechaInicio && fechaFin) {
+            return fechaVenta >= new Date(fechaInicio) && fechaVenta <= new Date(fechaFin);
+          }  else if (fechaInicio) {
+              return fechaVenta >= new Date(fechaInicio);
+          }  else if (fechaFin) {
+              return fechaVenta <= new Date(fechaFin);
+          }
+          return true;
+        })();
+
+        if (esIncluida) {
+          console.log(`Venta ID ${venta.id} (${venta.fecha}) incluida en el filtro`);
         }
 
-        return true;
+        return esIncluida;
       });
+      console.log(`Después del filtro quedan ${ventasFiltradas.length} ventas`);
     }
 
     if (!ventasFiltradas || ventasFiltradas.length === 0) {
@@ -693,49 +705,92 @@ router.get("/reporte/:almacenId", protect, async (req, res) => {
       properties: { tabColor: { argb: "FFC0000" } },
     });
 
+    // Añadir información del filtro en la primera fila
+    if (fechaInicio || fechaFin) {
+      const periodoRow = worksheet.addRow(["Período:"]);
+      periodoRow.font = { bold: true };
+
+      if (fechaInicio && fechaFin) {
+        worksheet.addRow([`Del ${new Date(fechaInicio).toLocaleDateString()} al ${new Date(fechaFin).toLocaleDateString()}`]);
+      } else if (fechaInicio) {
+        worksheet.addRow([`Desde ${new Date(fechaInicio).toLocaleDateString()}`]);
+      } else if (fechaFin) {
+        worksheet.addRow([`Hasta ${new Date(fechaFin).toLocaleDateString()}`]);
+      }
+
+      // Añadir fila vacía como separador
+      worksheet.addRow([]);
+    }  
+
     // Definir las columnas
     worksheet.columns = [
       { header: "ID", key: "id", width: 10 },
       { header: "Fecha", key: "fecha", width: 15 },
       { header: "Tipo de Venta", key: "tipoVenta", width: 20 },
-      { header: "Monto", key: "monto", width: 15 },
+      { header: "Monto Bruto", key: "montoBruto", width: 15 },
+      { header: "Monto Neto", key: "montoNeto", width: 15 },
       { header: "Detalles", key: "detalles", width: 30 },
     ];
 
     // Dar formato a los encabezados
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.getRow(1).fill = {
+    worksheet.getRow(worksheet.lastRow?.number + 1 || 1).font = { bold: true };
+    worksheet.getRow(worksheet.lastRow?.number).fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FFE0E0E0" },
     };
 
     // Añadir los datos a la hoja
-    let totalMonto = 0;
+    let totalMontoBruto = 0;
+    let totalMontoNeto = 0;
     ventasFiltradas.forEach((venta) => {
-      const montoVenta = parseFloat(venta.monto_bruto) || 0;
-      totalMonto += montoVenta;
+      const montoBruto = parseFloat(venta.monto_bruto) || 0;
+      const montoNeto = parseFloat(venta.monto_neto) || 0;
+      totalMontoBruto += montoBruto;
+      totalMontoNeto += montoNeto;
 
       worksheet.addRow({
         id: venta.id,
         fecha: venta.fecha ? new Date(venta.fecha).toLocaleDateString() : "",
         tipoVenta: venta.tipoVenta ? venta.tipoVenta.nombre : "",
-        monto: montoVenta,
+        montoBruto: montoBruto,
+        montoNeto: montoNeto,
         detalles: venta.detalles || "",
       });
     });
 
     // Formatear columna de monto como moneda
-    worksheet.getColumn("monto").numFmt = '"$"#,##0';
+    worksheet.getColumn("montoBruto").numFmt = '"$"#,##0';
+    worksheet.getColumn("montoNeto").numFmt = '"$"#,##0';
 
     // Añadir totales al final
-    const totalRow = worksheet.rowCount + 2;
-    worksheet.addRow(["", "", "TOTAL:", totalMonto, ""]);
-    worksheet.getCell(`D${totalRow}`).font = { bold: true };
-    worksheet.getCell(`D${totalRow}`).numFmt = '"$"#,##0';
+    worksheet.addRow([]);
+    const totalRow = worksheet.rowCount + 1;
+    worksheet.addRow(["", "", "TOTALES:", totalMontoBruto, totalMontoNeto, ""]);
 
-    // Nombre del archivo
-    const fileName = `reporte-ventas-${almacenId}-${
+    const filaTotal = worksheet.getRow(totalRow);
+    filaTotal.font = { bold: true };
+    filaTotal.getCell(4).numFmt = '"$"#,##0'; // Formato para monto bruto
+    filaTotal.getCell(5).numFmt = '"$"#,##0'; // Formato para monto neto
+
+    // Añadir pie de página con información adicional
+    worksheet.addRow([]);
+    worksheet.addRow(["Reporte generado:", new Date().toLocaleString('es-CL')]);
+    if (req.user && req.user.nombre) {
+      worksheet.addRow(["Usuario:", `${req.user.nombre} ${req.user.apellido || ''}`]);
+    }
+
+    // Nombre del archivo que incluya información del filtro
+    let nombreFiltro = "";
+    if (fechaInicio && fechaFin) {
+      nombreFiltro = `-${fechaInicio}-a-${fechaFin}`;
+    } else if (fechaInicio) {
+      nombreFiltro = `-desde-${fechaInicio}`;
+    } else if (fechaFin) {
+      nombreFiltro = `-hasta-${fechaFin}`;
+    }
+
+    const fileName = `reporte-ventas-${almacenId}${nombreFiltro}-${
       new Date().toISOString().split("T")[0]
     }.xlsx`;
 
