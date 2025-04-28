@@ -9,7 +9,6 @@ const ExcelJS = require("exceljs");
 const { sequelize } = require("../config/database");
 
 router.use((req, res, next) => {
-  console.log("URL solicitada:", req.method, req.url);
   next();
 });
 
@@ -17,7 +16,6 @@ router.use((req, res, next) => {
 router.get("/almacen/:almacenId", protect, async (req, res) => {
   try {
     const { almacenId } = req.params;
-    console.log("Buscando ventas para el almacén ID:", almacenId);
 
     const ventas = await Venta.findAll({
       where: {
@@ -31,10 +29,6 @@ router.get("/almacen/:almacenId", protect, async (req, res) => {
         },
       ],
     });
-
-    console.log(
-      `Se encontraron ${ventas.length} ventas para el almacén ${almacenId}`
-    );
     return res.status(200).json({ data: ventas });
   } catch (error) {
     console.error(
@@ -655,13 +649,10 @@ router.get("/reporte/:almacenId", protect, async (req, res) => {
       order: [["fecha", "DESC"]],
     });
 
-    console.log(`Se encontraron ${ventas.length} ventas para el almacén ${almacenId}`);
-
     // Filtrar manualmente por fecha (si se proporcionan)
     let ventasFiltradas = ventas;
 
     if (fechaInicio || fechaFin) {
-      console.log(`Aplicando filtro de fechas: ${fechaInicio} hasta ${fechaFin}`);
 
       ventasFiltradas = ventas.filter((venta) => {
         if (!venta.fecha) return false;
@@ -685,7 +676,6 @@ router.get("/reporte/:almacenId", protect, async (req, res) => {
 
         return esIncluida;
       });
-      console.log(`Después del filtro quedan ${ventasFiltradas.length} ventas`);
     }
 
     if (!ventasFiltradas || ventasFiltradas.length === 0) {
