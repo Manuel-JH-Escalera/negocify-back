@@ -4,9 +4,52 @@ const { Op } = require("sequelize");
 // Obtener todos los usuarios
 const getAllUsers = async (req, res) => {
   try {
-    const usuarios = await Usuario.findAll({
-      attributes: { exclude: ["password"] },
-    });
+
+    const { roles, almacenIds } = req.user;
+    const esAdminSistema = roles.includes("AdministradoresSistema");
+
+    let usuarios;
+
+    if (esAdminSistema) {
+      // Si es administrador del sistema, obtener todos los usuarios
+      usuarios = await Usuario.findAll({
+        attributes: { exclude: ["password"] },
+        include: [
+          {
+            model: Rol,
+            as: 'Roles',  // Alias para la relación con Rol
+            through: { attributes: [] }, // No incluir atributos de la tabla de unión
+          },
+          {
+            model: Almacen,
+            as: 'Almacenes',  // Alias para la relación con Almacen
+            through: { attributes: [] }, // No incluir atributos de la tabla de unión
+          },
+        ],
+      });
+    } else {
+      usuarios = await Usuario.findAll({
+        attributes: { exclude: ["password"] },
+        include: [
+          {
+            model: Rol,
+            as: 'Roles',  // Alias para la relación con Rol
+            through: { attributes: [] }, // No incluir atributos de la tabla de unión
+          },
+          {
+            model: Almacen,
+            as: 'Almacenes',  // Alias para la relación con Almacen
+            through: { attributes: [] }, // No incluir atributos de la tabla de unión
+          },
+        ],
+        where: {
+          "$Almacenes.id$": {  // Usar el alias aquí también
+            [Op.in]: almacenIds, // Filtrar por almacenes permitidos
+          },
+        },
+      });
+    }
+    
 
     res.status(200).json({
       success: true,
@@ -68,6 +111,16 @@ const createUser = async (req, res) => {
   try {
     const { nombre, apellido, email, password, telefono, roles, almacenes } =
       req.body;
+
+      const esAdmin = req.user.roles.includes("administrador");
+      const puedeEditar = almacenes?.every(id => req.user.almacenIds.includes(id));
+
+      if (!esAdmin || !puedeEditar) {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para crear un usuario en este almacén",
+        });
+      }
 
     // Verificar que el email no esté ya registrado
     const existingUser = await Usuario.findOne({ where: { email } });
@@ -170,6 +223,16 @@ const updateUser = async (req, res) => {
       });
     }
 
+    const esAdmin = req.user.roles.includes("administrador");
+    const puedeEditar = almacenes?.every(id => req.user.almacenIds.includes(id));
+
+    if (!esAdmin || !puedeEditar) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes permisos para editar este usuario en este almacén",
+      });
+    }
+
     // Si se actualiza el email, verificar que no esté en uso por otro usuario
     if (email && email !== usuario.email) {
       const existingUser = await Usuario.findOne({
@@ -237,20 +300,29 @@ const updateUser = async (req, res) => {
     }
 
     // Obtener el usuario actualizado con sus relaciones
-    const usuarioActualizado = await Usuario.findByPk(id, {
+    const usuarioActualizado = await Usuario.findByPk(decoded.id, {
       attributes: { exclude: ["password"] },
       include: [
         {
-          model: Rol,
-          through: { attributes: [] },
-        },
-        {
-          model: Almacen,
-          through: { attributes: [] },
+          model: UsuarioRolAlmacen,
+          as: "RolAlmacenEntries",
+          include: [
+            {
+              model: Almacen,
+              as: "Almacen",  // Alias para la relación con Almacen
+              attributes: ["id", "nombre", "direccion"],
+            },
+            {
+              model: Rol,
+              as: "Rol",  // Alias para la relación con Rol
+              attributes: ["id", "nombre"],
+            },
+          ],
         },
       ],
+      logging: console.log,  // Esto imprimirá las consultas SQL para depuración
     });
-
+    
     res.status(200).json({
       success: true,
       message: "Usuario actualizado exitosamente",
@@ -277,6 +349,17 @@ const deleteUser = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: `Usuario con ID ${id} no encontrado`,
+      });
+    }
+
+    const esAdmin = req.user.roles.includes("administrador");
+    const almacenesDelUsuario = usuario.almacenes.map((almacen) => almacen.id);
+    const puedeEliminar = almacenesDelUsuario.every(id => req.user.almacenIds.includes(id));
+
+    if (!esAdmin || !puedeEliminar) {
+      return res.status(403).json({
+        success: false,
+        message: "Acceso denegado. No tienes permiso para eliminar este usuario.",
       });
     }
 

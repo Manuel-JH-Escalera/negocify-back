@@ -61,6 +61,8 @@ const getUserPermissions = async (usuarioId) => {
     return {
       esAdminSistema,
       almacenes: almacenesUsuario,
+      almacenIds : almacenesUsuario.map((almacen) => almacen.id),
+      roles: [...new Set(almacenesUsuario.map((almacen) => almacen.rolId))],
     };
   } catch (error) {
     console.error("Error al obtener permisos de usuario:", error);
