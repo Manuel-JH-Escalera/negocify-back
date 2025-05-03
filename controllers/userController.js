@@ -17,13 +17,13 @@ const getAllUsers = async (req, res) => {
         include: [
           {
             model: Rol,
-            as: 'Roles',  // Alias para la relación con Rol
-            through: { attributes: [] }, // No incluir atributos de la tabla de unión
+            as: 'Roles',  
+            through: { attributes: [] }, 
           },
           {
             model: Almacen,
-            as: 'Almacenes',  // Alias para la relación con Almacen
-            through: { attributes: [] }, // No incluir atributos de la tabla de unión
+            as: 'Almacenes',  
+            through: { attributes: [] }, 
           },
         ],
       });
@@ -33,21 +33,21 @@ const getAllUsers = async (req, res) => {
         include: [
           {
             model: Rol,
-            as: 'Roles',  // Alias para la relación con Rol
-            through: { attributes: [] }, // No incluir atributos de la tabla de unión
+            as: 'Roles',
+            through: { attributes: [] },
           },
           {
             model: Almacen,
-            as: 'Almacenes',  // Alias para la relación con Almacen
-            through: { attributes: [] }, // No incluir atributos de la tabla de unión
+            as: 'Almacenes',
+            where: {
+              id: { [Op.in]: almacenIds },
+            },
+            required: true, 
+            through: { attributes: [] },
           },
         ],
-        where: {
-          "$Almacenes.id$": {  // Usar el alias aquí también
-            [Op.in]: almacenIds, // Filtrar por almacenes permitidos
-          },
-        },
       });
+      
     }
     
 
@@ -76,11 +76,11 @@ const getUserById = async (req, res) => {
       include: [
         {
           model: Rol,
-          through: { attributes: [] }, // No incluir atributos de la tabla de unión
+          through: { attributes: [] }, 
         },
         {
           model: Almacen,
-          through: { attributes: [] }, // No incluir atributos de la tabla de unión
+          through: { attributes: [] }, 
         },
       ],
     });
@@ -140,14 +140,12 @@ const createUser = async (req, res) => {
       telefono,
     });
 
-    // Si se proporcionan roles y almacenes, asignarlos al usuario
     if (roles && almacenes && roles.length > 0 && almacenes.length > 0) {
-      // Verificar que los roles y almacenes existan
       const rolesDb = await Rol.findAll({ where: { id: roles } });
       const almacenesDb = await Almacen.findAll({ where: { id: almacenes } });
 
       if (rolesDb.length !== roles.length) {
-        await usuario.destroy(); // Eliminar el usuario si hay un problema
+        await usuario.destroy(); 
         return res.status(400).json({
           success: false,
           message: "Uno o más roles no existen",
@@ -155,7 +153,7 @@ const createUser = async (req, res) => {
       }
 
       if (almacenesDb.length !== almacenes.length) {
-        await usuario.destroy(); // Eliminar el usuario si hay un problema
+        await usuario.destroy(); 
         return res.status(400).json({
           success: false,
           message: "Uno o más almacenes no existen",
@@ -300,7 +298,7 @@ const updateUser = async (req, res) => {
     }
 
     // Obtener el usuario actualizado con sus relaciones
-    const usuarioActualizado = await Usuario.findByPk(decoded.id, {
+    const usuarioActualizado = await Usuario.findByPk(id, {
       attributes: { exclude: ["password"] },
       include: [
         {
@@ -320,7 +318,7 @@ const updateUser = async (req, res) => {
           ],
         },
       ],
-      logging: console.log,  // Esto imprimirá las consultas SQL para depuración
+      logging: console.log, 
     });
     
     res.status(200).json({
